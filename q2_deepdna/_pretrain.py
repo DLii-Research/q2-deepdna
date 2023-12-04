@@ -2,6 +2,7 @@
 
 # Import types from qiime
 from dnadb import fasta
+from deepdna.nn import data_generators as dg
 from deepdna.nn.models import dnabert
 import os
 from pathlib import Path
@@ -25,7 +26,8 @@ def pretrain_dnabert(
     train_checkpoint_frequency: Union[int, Literal["epoch"]] = "epoch",
     train_mask_ratio: float = 0.15,
     train_batch_size: int = 256,
-    val_batch_size: int = 256,
+    train_val_batch_size: int = 256,
+    train_val_frequency: int = 1,
     # Wandb
     wandb_mode: str = "disabled",
     wandb_project: Optional[str] = None,
@@ -64,9 +66,42 @@ def pretrain_dnabert(
             "model_num_attention_heads": model_num_attention_heads,
             "train_mask_ratio": train_mask_ratio,
             "train_batch_size": train_batch_size,
-            "val_batch_size": val_batch_size,
         })
-    model(tf.zeros((1, model.sequence_length - model.kmer + 1), dtype=tf.int32))
+
+    train_data = dg.BatchGenerator(train_batch_size, 100, [
+        dg.random_samples(sequences),
+        dg.random_sequence_entries(),
+        dg.sequences(model_sequence_length),
+        dg.augment_ambiguous_bases(),
+        dg.encode_sequences(),
+        dg.encode_kmers(model_kmer),
+        lambda encoded_kmer_sequences: (encoded_kmer_sequences, encoded_kmer_sequences)
+    ])
+    val_data = dg.BatchGenerator(train_val_batch_size, 20, [
+        dg.random_samples(sequences),
+        dg.random_sequence_entries(),
+        dg.sequences(model_sequence_length),
+        dg.augment_ambiguous_bases(),
+        dg.encode_sequences(),
+        dg.encode_kmers(model_kmer),
+        lambda encoded_kmer_sequences: (encoded_kmer_sequences, encoded_kmer_sequences)
+    ], shuffle=False)
+    print("Training the model")
+    callbacks = []
+    if wandb_mode != "disabled":
+        callbacks.append(wandb.keras.WandbCallback())
+    if train_checkpoint_path is not None:
+        callbacks.append(tf.keras.callbacks.ModelCheckpoint(
+            filepath=train_checkpoint_path,
+            save_weights_only=False,
+            save_freq=train_checkpoint_frequency*100,
+        ))
+    model.fit(
+        train_data,
+        validation_data=val_data,
+        validation_freq=train_val_frequency,
+        callbacks=callbacks)
+
     return model
 
 
@@ -86,9 +121,10 @@ plugin.methods.register_function(
         # Training hyperparameters
         "train_checkpoint_path": Str,
         "train_checkpoint_frequency": Int % Range(1, None) | Str % Choices(["epoch"]),
-        "train_mask_ratio": Float % Range(0, 1),
+        "train_mask_ratio": Float % Range(0, 1, inclusive_start=False, inclusive_end=False),
         "train_batch_size": Int % Range(1, None),
-        "val_batch_size": Int % Range(1, None),
+        "train_val_batch_size": Int % Range(1, None),
+        "train_val_frequency": Int % Range(1, None),
 
         # Wandb
         "wandb_mode": Str % Choices(["disabled", "online", "offline"]),
@@ -116,7 +152,8 @@ plugin.methods.register_function(
         "train_checkpoint_frequency": "The checkpoint frequency to use for training.",
         "train_batch_size": "The batch size to be used for training.",
         "train_mask_ratio": "The ratio of the sequences to be masked during pre-training.",
-        "val_batch_size": "The batch size to be used for validation.",
+        "train_val_batch_size": "The batch size to be used for validation.",
+        "train_val_frequency": "The validation frequency to use for training.",
 
         # Wandb
         "wandb_mode": "The wandb mode to be used for logging.",
