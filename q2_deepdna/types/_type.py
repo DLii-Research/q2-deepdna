@@ -1,4 +1,5 @@
 from qiime2.plugin import SemanticType
+from q2_types.feature_data import FeatureData
 from ._format import DNAFASTADBFormat, DeepDNASavedModelFormat
 from ..plugin_setup import plugin
 
@@ -12,11 +13,20 @@ from ..plugin_setup import plugin
 # 3. Transformers are used to transform between usable types and formats.
 #    For example, we can transform a given FASTA DB file format into a FASTA DB object.
 
-DNAFASTADB = SemanticType("DNAFASTADB")
+# DB formats ---------------------------------------------------------------------------------------
+SequenceDB = SemanticType("SequenceDB", variant_of=FeatureData.field['type'])
+TaxonomyDB = SemanticType("TaxonomyDB", variant_of=FeatureData.field['type'])
+
+plugin.register_semantic_types(SequenceDB, TaxonomyDB)
+plugin.register_semantic_type_to_format(FeatureData[SequenceDB], DNAFASTADBFormat) # type: ignore
+
+# Model formats ------------------------------------------------------------------------------------
+
+# Generic DeepDNAModel
 DeepDNAModel = SemanticType("DeepDNAModel", field_names="type")
+
+# DNABERT Models
 DNABERTPretrainingModel = SemanticType('DNABERTPretrainingModel', variant_of=DeepDNAModel.field['type'])
 
-plugin.register_semantic_types(DNAFASTADB)
 plugin.register_semantic_types(DeepDNAModel, DNABERTPretrainingModel)
-plugin.register_semantic_type_to_format(DNAFASTADB, DNAFASTADBFormat)
-plugin.register_semantic_type_to_format(DeepDNAModel[DNABERTPretrainingModel], DeepDNASavedModelFormat)
+plugin.register_semantic_type_to_format(DeepDNAModel[DNABERTPretrainingModel], DeepDNASavedModelFormat) # type: ignore

@@ -20,6 +20,7 @@ class DeepDNASavedModelFormat(model.DirectoryFormat):
     variables_index = model.File("variables/variables.index", format=_GenericBinaryFormat)
     variables_data = model.File("variables/variables.data-00000-of-00001", format=_GenericBinaryFormat)
 
+
 plugin.register_formats(_GenericBinaryFormat)
 plugin.register_formats(DNAFASTADBFormat)
 plugin.register_formats(DeepDNASavedModelFormat)

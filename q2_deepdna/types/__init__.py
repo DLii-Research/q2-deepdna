@@ -3,11 +3,11 @@ from ._format import (
     DeepDNASavedModelFormat
 )
 from ._type import (
-    DNAFASTADB,
     DeepDNAModel,
-    DNABERTPretrainingModel
+    DNABERTPretrainingModel,
+    SequenceDB,
+    TaxonomyDB,
 )
-
 
 __all__ = [
     # Formats
@@ -15,7 +15,8 @@ __all__ = [
     "DeepDNASavedModelFormat",
 
     # Semantic types
-    "DNAFASTADB",
     "DeepDNAModel",
     "DNABERTPretrainingModel",
+    "SequenceDB",
+    "TaxonomyDB"
 ]
