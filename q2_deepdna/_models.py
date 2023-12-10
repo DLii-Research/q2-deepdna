@@ -44,11 +44,11 @@ class DNABERTPretrainingModel(DeepDNAModel[dnabert.DnaBertPretrainModel]):
     @classmethod
     def create(
         cls,
-        sequence_length: int = 150,
-        kmer: int = 3,
-        embed_dim: int = 64,
-        stack: int = 8,
-        num_heads: int = 8,
+        sequence_length: int,
+        kmer: int,
+        embed_dim: int,
+        stack: int,
+        num_heads: int,
     ) -> "DNABERTPretrainingModel":
         model = dnabert.DnaBertPretrainModel(
             dnabert.DnaBertModel(
