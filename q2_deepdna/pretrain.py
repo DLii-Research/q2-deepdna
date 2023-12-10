@@ -25,12 +25,13 @@ import wandb
         "model_num_attention_heads": Field(Int % Range(1, None), "The number of attention heads within each transformer block to be used for the model."), # type: ignore
 
         # Training hyperparameters
-        "train_checkpoint_path": Field(Str, "The path to the checkpoint to be used for training."), # type: ignore
-        "train_checkpoint_frequency": Field(Int % Range(1, None) | Str % Choices(["epoch"]), "The checkpoint frequency to use for training."), # type: ignore
+        "train_epochs": Field(Int % Range(1, None), "The number of epochs to be used for training."), # type: ignore
+        "train_steps_per_epoch": Field(Int % Range(1, None), "The number of steps per epoch to be used for training."), # type: ignore
         "train_batch_size": Field(Int % Range(1, None), "The batch size to be used for training."), # type: ignore
         "train_mask_ratio": Field(Float % Range(0, 1, inclusive_start=False, inclusive_end=False), "The ratio of the sequences to be masked during pre-training."), # type: ignore
         "train_val_batch_size": Field(Int % Range(1, None), "The batch size to be used for validation."), # type: ignore
         "train_val_frequency": Field(Int % Range(1, None), "The validation frequency to use for training."), # type: ignore
+        "train_val_steps": Field(Int % Range(1, None), "The number of steps to use for validation."), # type: ignore
         "train_show_progress": Field(Bool, "Whether to show the training progress or not (--verbose required)."),
 
         # Wandb
@@ -51,12 +52,13 @@ def pretrain_dnabert(
     model_num_transformer_blocks: int = 8,
     model_num_attention_heads: int = 8,
     # Training hyperparameters
-    train_checkpoint_path: Optional[str] = None,
-    train_checkpoint_frequency: Union[int, Literal["epoch"]] = "epoch",
+    train_epochs: int = 2000,
+    train_steps_per_epoch: int = 100,
     train_mask_ratio: float = 0.15,
     train_batch_size: int = 256,
     train_val_batch_size: int = 256,
-    train_val_frequency: int = 1,
+    train_val_frequency: int = 20,
+    train_val_steps: int = 20,
     train_show_progress: bool = True,
     # Wandb
     wandb_mode: str = "disabled",
@@ -94,7 +96,7 @@ def pretrain_dnabert(
             "train_mask_ratio": train_mask_ratio,
             "train_batch_size": train_batch_size,
         })
-    train_data = dg.BatchGenerator(train_batch_size, 100, [
+    train_data = dg.BatchGenerator(train_batch_size, train_steps_per_epoch, [
         dg.random_samples(sequences),
         dg.random_sequence_entries(),
         dg.sequences(model_sequence_length),
@@ -103,7 +105,7 @@ def pretrain_dnabert(
         dg.encode_kmers(model_kmer),
         lambda encoded_kmer_sequences: (encoded_kmer_sequences, encoded_kmer_sequences)
     ])
-    val_data = dg.BatchGenerator(train_val_batch_size, 20, [
+    val_data = dg.BatchGenerator(train_val_batch_size, train_val_steps, [
         dg.random_samples(sequences),
         dg.random_sequence_entries(),
         dg.sequences(model_sequence_length),
@@ -116,17 +118,11 @@ def pretrain_dnabert(
     callbacks = [SafelyStopTrainingCallback()]
     if wandb_mode != "disabled":
         callbacks.append(wandb.keras.WandbCallback())
-    if train_checkpoint_path is not None:
-        callbacks.append(tf.keras.callbacks.ModelCheckpoint(
-            filepath=train_checkpoint_path,
-            save_weights_only=False,
-            save_freq=train_checkpoint_frequency*100,
-        ))
     model.fit(
         train_data,
         validation_data=val_data,
         validation_freq=train_val_frequency,
         callbacks=callbacks,
+        epochs=train_epochs,
         verbose=1 if train_show_progress else 0)
-
     return model
