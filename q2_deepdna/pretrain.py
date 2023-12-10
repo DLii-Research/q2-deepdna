@@ -1,14 +1,11 @@
 from qiime2.plugin import Bool, Choices, Int, Float, Range, Str
 from q2_types.feature_data import FeatureData
-from typing import Literal, Optional, Union
-from .types import DeepDNAModel, DNABERTPretrainingModel, SequenceDB
+from typing import Optional
+from .types import DeepDNAModel, DNABERTPretrainingModel as DNABERTPretrainingModelType, SequenceDB
+from ._models import DNABERTPretrainingModel
 from ._registry import Field, register_method
 
-from deepdna.nn import data_generators as dg
-from deepdna.nn.callbacks import SafelyStopTrainingCallback
-from deepdna.nn.models import dnabert
 from dnadb import fasta
-import tensorflow as tf
 import wandb
 
 
@@ -41,7 +38,7 @@ import wandb
         "wandb_entity": Field(Str, "The wandb entity to be used for logging."),
         "wandb_group": Field(Str, "The wandb group to be used for logging."),
     },
-    outputs={"model": Field(DeepDNAModel[DNABERTPretrainingModel], "The pre-trained DNABERT model.")}, # type: ignore
+    outputs={"model": Field(DeepDNAModel[DNABERTPretrainingModelType], "The pre-trained DNABERT model.")}, # type: ignore
 )
 def pretrain_dnabert(
     sequences: fasta.FastaDb,
@@ -66,63 +63,30 @@ def pretrain_dnabert(
     wandb_name: Optional[str] = None,
     wandb_entity: Optional[str] = None,
     wandb_group: Optional[str] = None,
-) -> dnabert.DnaBertPretrainModel:
-    model = dnabert.DnaBertPretrainModel(
-        dnabert.DnaBertModel(
-            sequence_length=model_sequence_length,
-            kmer=model_kmer,
-            embed_dim=model_embed_dim,
-            stack=model_num_transformer_blocks,
-            num_heads=model_num_attention_heads)
-    )
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-    )
-    model.summary()
-    if wandb_mode != "disabled":
-        wandb.init(
-            project=wandb_project,
-            name=wandb_name,
-            entity=wandb_entity,
-            group=wandb_group,
-            mode=wandb_mode
-        )
-        wandb.config.update({
-            "model_sequence_length": model_sequence_length,
-            "model_kmer": model_kmer,
-            "model_embed_dim": model_embed_dim,
-            "model_num_transformer_blocks": model_num_transformer_blocks,
-            "model_num_attention_heads": model_num_attention_heads,
-            "train_mask_ratio": train_mask_ratio,
-            "train_batch_size": train_batch_size,
-        })
-    train_data = dg.BatchGenerator(train_batch_size, train_steps_per_epoch, [
-        dg.random_samples(sequences),
-        dg.random_sequence_entries(),
-        dg.sequences(model_sequence_length),
-        dg.augment_ambiguous_bases(),
-        dg.encode_sequences(),
-        dg.encode_kmers(model_kmer),
-        lambda encoded_kmer_sequences: (encoded_kmer_sequences, encoded_kmer_sequences)
-    ])
-    val_data = dg.BatchGenerator(train_val_batch_size, train_val_steps, [
-        dg.random_samples(sequences),
-        dg.random_sequence_entries(),
-        dg.sequences(model_sequence_length),
-        dg.augment_ambiguous_bases(),
-        dg.encode_sequences(),
-        dg.encode_kmers(model_kmer),
-        lambda encoded_kmer_sequences: (encoded_kmer_sequences, encoded_kmer_sequences)
-    ], shuffle=False)
-    print("Training the model")
-    callbacks = [SafelyStopTrainingCallback()]
-    if wandb_mode != "disabled":
-        callbacks.append(wandb.keras.WandbCallback())
-    model.fit(
-        train_data,
-        validation_data=val_data,
-        validation_freq=train_val_frequency,
-        callbacks=callbacks,
+) -> DNABERTPretrainingModel:
+    container = DNABERTPretrainingModel.create(
+        sequence_length=model_sequence_length,
+        kmer=model_kmer,
+        embed_dim=model_embed_dim,
+        stack=model_num_transformer_blocks,
+        num_heads=model_num_attention_heads)
+    container.summary()
+    wandb.init(
+        project=wandb_project,
+        name=wandb_name,
+        entity=wandb_entity,
+        group=wandb_group,
+        mode=wandb_mode,
+        config=container.manifest.to_dict())
+    container.fit(
+        sequences,
+        val_sequences=None,
         epochs=train_epochs,
+        steps_per_epoch=train_steps_per_epoch,
+        mask_ratio=train_mask_ratio,
+        batch_size=train_batch_size,
+        val_batch_size=train_val_batch_size,
+        val_frequency=train_val_frequency,
+        val_steps=train_val_steps,
         verbose=1 if train_show_progress else 0)
-    return model
+    return container

@@ -5,6 +5,15 @@ from typing import Dict, List, Optional
 # A field definition for a Qiime2 action method.
 Field = namedtuple("MethodField", ["semantic_type", "description"])
 
+def register_format(cls):
+    """
+    Register a format with the plugin.
+    """
+    from .plugin_setup import plugin
+    plugin.register_formats(cls)
+    return cls
+
+
 def register_method(
         name: str,
         *,

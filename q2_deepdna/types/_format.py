@@ -1,31 +1,42 @@
 from dnadb import fasta
-from deepdna.nn.models import load_model, dnabert
+from deepdna.nn.models import load_model
+import pickle
 from qiime2.plugin import model
 import tensorflow as tf
+from typing import Tuple
+from .._models import DeepDNAModel, DNABERTPretrainingModel, DeepDNAModelManifest
+from .._registry import register_format
 from ..plugin_setup import plugin, citations
 
+
+@register_format
 class _GenericBinaryFormat(model.BinaryFileFormat):
     def _validate_(self, level):
         pass
 
 
+@register_format
+class PickleFormat(model.BinaryFileFormat):
+    def _validate_(self, level):
+        pass
+
+
+@register_format
 class DNAFASTADBFormat(model.DirectoryFormat):
     data = model.File("data.mdb", format=_GenericBinaryFormat)
     lock = model.File("lock.mdb", format=_GenericBinaryFormat)
 
 
+@register_format
 class DeepDNASavedModelFormat(model.DirectoryFormat):
-    keras_metadata_pure_tf = model.File("keras_metadata.pb", format=_GenericBinaryFormat)
-    saved_model_pure_tf = model.File("saved_model.pb", format=_GenericBinaryFormat)
-    variables_index = model.File("variables/variables.index", format=_GenericBinaryFormat)
-    variables_data = model.File("variables/variables.data-00000-of-00001", format=_GenericBinaryFormat)
+    manifest: model.File = model.File("manifest.pkl", format=PickleFormat)
+    keras_metadata_pure_tf = model.File("model/keras_metadata.pb", format=_GenericBinaryFormat)
+    saved_model_pure_tf = model.File("model/saved_model.pb", format=_GenericBinaryFormat)
+    variables_index = model.File("model/variables/variables.index", format=_GenericBinaryFormat)
+    variables_data = model.File("model/variables/variables.data-00000-of-00001", format=_GenericBinaryFormat)
 
 
-plugin.register_formats(_GenericBinaryFormat)
-plugin.register_formats(DNAFASTADBFormat)
-plugin.register_formats(DeepDNASavedModelFormat)
-
-# Transformer Registry -----------------------------------------------------------------------------
+# File Format Transformers Registry ----------------------------------------------------------------
 
 @plugin.register_transformer
 def _1(data: fasta.FastaDb) -> DNAFASTADBFormat:
@@ -39,19 +50,35 @@ def _1(data: fasta.FastaDb) -> DNAFASTADBFormat:
 def _2(ff: DNAFASTADBFormat) -> fasta.FastaDb:
     return fasta.FastaDb(ff.path)
 
-# Model Transformers -------------------------------------------------------------------------------
-
-# Generic save model function
-def _save_model(data: tf.keras.Model) -> DeepDNASavedModelFormat:
-    ff = DeepDNASavedModelFormat()
-    ff.path.mkdir(parents=True, exist_ok=True)
-    data.save(ff.path)
+@plugin.register_transformer
+def _3(data: dict) -> PickleFormat:
+    ff = PickleFormat()
+    with ff.open() as f:
+        pickle.dump(data, f)
     return ff
 
 @plugin.register_transformer
-def _3(data: dnabert.DnaBertPretrainModel) -> DeepDNASavedModelFormat:
+def _4(ff: PickleFormat) -> dict:
+    with ff.open() as f:
+        return pickle.load(f)
+
+# Model Transformers -------------------------------------------------------------------------------
+
+# Generic save model function
+def _save_model(data: DeepDNAModel) -> DeepDNASavedModelFormat:
+    ff = DeepDNASavedModelFormat()
+    ff.path.mkdir(parents=True, exist_ok=True)
+    ff.manifest.write_data(data.manifest.to_dict(), dict)
+    data.model.save(ff.path / "model")
+    return ff
+
+def _load_model(ff: DeepDNASavedModelFormat) -> Tuple[tf.keras.Model, DeepDNAModelManifest]:
+    return load_model(ff.path), DeepDNAModelManifest(**(ff.manifest.view(dict) or {})) # type: ignore
+
+@plugin.register_transformer
+def _5(data: DNABERTPretrainingModel) -> DeepDNASavedModelFormat:
     return _save_model(data)
 
 @plugin.register_transformer
-def _4(ff: DeepDNASavedModelFormat) -> dnabert.DnaBertPretrainModel:
-    return load_model(ff.path, dnabert.DnaBertPretrainModel)
+def _6(ff: DeepDNASavedModelFormat) -> DNABERTPretrainingModel:
+    return DNABERTPretrainingModel(*_load_model(ff))
