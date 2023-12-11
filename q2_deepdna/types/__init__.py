@@ -5,6 +5,9 @@ from ._format import (
 from ._type import (
     DeepDNAModel,
     DNABERTPretrainingModel,
+    DNABERTNaiveTaxonomyModel,
+    DNABERTBERTaxTaxonomyModel,
+    DNABERTTopDownTaxonomyModel,
     SequenceDB,
     TaxonomyDB,
 )
@@ -17,6 +20,9 @@ __all__ = [
     # Semantic types
     "DeepDNAModel",
     "DNABERTPretrainingModel",
+    "DNABERTBERTaxTaxonomyModel",
+    "DNABERTNaiveTaxonomyModel",
+    "DNABERTTopDownTaxonomyModel",
     "SequenceDB",
     "TaxonomyDB"
 ]

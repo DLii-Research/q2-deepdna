@@ -4,7 +4,10 @@ import pickle
 from qiime2.plugin import model
 import tensorflow as tf
 from typing import Tuple
-from .._models import DeepDNAModel, DNABERTPretrainingModel, DeepDNAModelManifest
+from .._models import (
+    DeepDNAModel, DNABERTPretrainingModel, DeepDNAModelManifest,
+    DNABERTNaiveTaxonomyModel, DNABERTBERTaxTaxonomyModel, DNABERTTopDownTaxonomyModel
+)
 from .._registry import register_format
 from ..plugin_setup import plugin, citations
 
@@ -68,12 +71,14 @@ def _4(ff: PickleFormat) -> dict:
 def _save_model(data: DeepDNAModel) -> DeepDNASavedModelFormat:
     ff = DeepDNASavedModelFormat()
     ff.path.mkdir(parents=True, exist_ok=True)
-    ff.manifest.write_data(data.manifest.to_dict(), dict)
+    ff.manifest.write_data(data.manifest.to_dict(), dict) # type: ignore
     data.model.save(ff.path / "model")
     return ff
 
 def _load_model(ff: DeepDNASavedModelFormat) -> Tuple[tf.keras.Model, DeepDNAModelManifest]:
     return load_model(ff.path), DeepDNAModelManifest(**(ff.manifest.view(dict) or {})) # type: ignore
+
+# DNABERT Pre-training Model
 
 @plugin.register_transformer
 def _5(data: DNABERTPretrainingModel) -> DeepDNASavedModelFormat:
@@ -82,3 +87,29 @@ def _5(data: DNABERTPretrainingModel) -> DeepDNASavedModelFormat:
 @plugin.register_transformer
 def _6(ff: DeepDNASavedModelFormat) -> DNABERTPretrainingModel:
     return DNABERTPretrainingModel(*_load_model(ff))
+
+# DNABERT Taxonomy Models
+
+@plugin.register_transformer
+def _7(data: DNABERTNaiveTaxonomyModel) -> DeepDNASavedModelFormat:
+    return _save_model(data)
+
+@plugin.register_transformer
+def _8(ff: DeepDNASavedModelFormat) -> DNABERTNaiveTaxonomyModel:
+    return DNABERTNaiveTaxonomyModel(*_load_model(ff))
+
+@plugin.register_transformer
+def _9(data: DNABERTBERTaxTaxonomyModel) -> DeepDNASavedModelFormat:
+    return _save_model(data)
+
+@plugin.register_transformer
+def _10(ff: DeepDNASavedModelFormat) -> DNABERTBERTaxTaxonomyModel:
+    return DNABERTBERTaxTaxonomyModel(*_load_model(ff))
+
+@plugin.register_transformer
+def _11(data: DNABERTTopDownTaxonomyModel) -> DeepDNASavedModelFormat:
+    return _save_model(data)
+
+@plugin.register_transformer
+def _12(ff: DeepDNASavedModelFormat) -> DNABERTTopDownTaxonomyModel:
+    return DNABERTTopDownTaxonomyModel(*_load_model(ff))

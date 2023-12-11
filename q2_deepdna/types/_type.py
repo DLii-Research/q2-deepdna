@@ -27,6 +27,15 @@ DeepDNAModel = SemanticType("DeepDNAModel", field_names="type")
 
 # DNABERT Models
 DNABERTPretrainingModel = SemanticType('DNABERTPretrainingModel', variant_of=DeepDNAModel.field['type'])
+DNABERTNaiveTaxonomyModel = SemanticType('DNABERTNaiveTaxonomyModel', variant_of=DeepDNAModel.field['type'])
+DNABERTBERTaxTaxonomyModel = SemanticType('DNABERTBERTaxTaxonomyModel', variant_of=DeepDNAModel.field['type'])
+DNABERTTopDownTaxonomyModel = SemanticType('DNABERTTopDownTaxonomyModel', variant_of=DeepDNAModel.field['type'])
 
-plugin.register_semantic_types(DeepDNAModel, DNABERTPretrainingModel)
+plugin.register_semantic_types(
+    DeepDNAModel, DNABERTPretrainingModel, DNABERTNaiveTaxonomyModel, DNABERTBERTaxTaxonomyModel,
+    DNABERTTopDownTaxonomyModel)
+
 plugin.register_semantic_type_to_format(DeepDNAModel[DNABERTPretrainingModel], DeepDNASavedModelFormat) # type: ignore
+plugin.register_semantic_type_to_format(DeepDNAModel[DNABERTNaiveTaxonomyModel], DeepDNASavedModelFormat) # type: ignore
+plugin.register_semantic_type_to_format(DeepDNAModel[DNABERTBERTaxTaxonomyModel], DeepDNASavedModelFormat) # type: ignore
+plugin.register_semantic_type_to_format(DeepDNAModel[DNABERTTopDownTaxonomyModel], DeepDNASavedModelFormat) # type: ignore

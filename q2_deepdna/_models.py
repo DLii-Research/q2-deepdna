@@ -3,8 +3,8 @@ from typing import Any, Dict, Generic, Optional, TypeVar
 
 from deepdna.nn import data_generators as dg
 from deepdna.nn.callbacks import SafelyStopTrainingCallback
-from deepdna.nn.models import dnabert
-from dnadb import fasta
+from deepdna.nn.models import dnabert, taxonomy as taxonomy_models
+from dnadb import fasta, taxonomy
 import tensorflow as tf
 import wandb
 
@@ -40,7 +40,6 @@ class DeepDNAModel(Generic[ModelType]):
 
 @dataclass
 class DNABERTPretrainingModel(DeepDNAModel[dnabert.DnaBertPretrainModel]):
-    ...
     @classmethod
     def create(
         cls,
@@ -121,3 +120,63 @@ class DNABERTPretrainingModel(DeepDNAModel[dnabert.DnaBertPretrainModel]):
                 wandb.keras.WandbMetricsLogger(),
             ],
             verbose=verbose)
+
+
+@dataclass
+class DNABERTBERTaxTaxonomyModel(DeepDNAModel[taxonomy_models.BertaxTaxonomyClassificationModel]):
+    @classmethod
+    def create(
+        cls,
+        dnabert_pretraining_model: DNABERTPretrainingModel,
+        taxonomy_tree: taxonomy.TaxonomyTree
+    ) -> "DNABERTBERTaxTaxonomyModel":
+        base = dnabert_pretraining_model.model.base
+        encoder = dnabert.DnaBertEncoderModel(base)
+        model = taxonomy_models.BertaxTaxonomyClassificationModel(encoder, taxonomy_tree)
+        return cls(model, DeepDNAModelManifest({}))
+
+    def fit(
+        self,
+    ):
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
+        return
+
+
+@dataclass
+class DNABERTNaiveTaxonomyModel(DeepDNAModel[taxonomy_models.NaiveTaxonomyClassificationModel]):
+    @classmethod
+    def create(
+        cls,
+        dnabert_pretraining_model: DNABERTPretrainingModel,
+        taxonomy_tree: taxonomy.TaxonomyTree
+    ) -> "DNABERTNaiveTaxonomyModel":
+        base = dnabert_pretraining_model.model.base
+        encoder = dnabert.DnaBertEncoderModel(base)
+        model = taxonomy_models.NaiveTaxonomyClassificationModel(encoder, taxonomy_tree)
+        return cls(model, DeepDNAModelManifest({}))
+
+    def fit(
+        self,
+    ):
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
+        return
+
+
+@dataclass
+class DNABERTTopDownTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyClassificationModel]):
+    @classmethod
+    def create(
+        cls,
+        dnabert_pretraining_model: DNABERTPretrainingModel,
+        taxonomy_tree: taxonomy.TaxonomyTree
+    ) -> "DNABERTTopDownTaxonomyModel":
+        base = dnabert_pretraining_model.model.base
+        encoder = dnabert.DnaBertEncoderModel(base)
+        model = taxonomy_models.TopDownTaxonomyClassificationModel(encoder, taxonomy_tree)
+        return cls(model, DeepDNAModelManifest({}))
+
+    def fit(
+        self,
+    ):
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
+        return
