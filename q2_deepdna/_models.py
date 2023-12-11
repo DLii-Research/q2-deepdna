@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, Optional, TypeVar
 
 from deepdna.nn import data_generators as dg
 from deepdna.nn.callbacks import SafelyStopTrainingCallback
-from deepdna.nn.models import dnabert, taxonomy as taxonomy_models
+from deepdna.nn.models import dnabert, setbert, taxonomy as taxonomy_models
 from dnadb import fasta, taxonomy
 import tensorflow as tf
 import wandb
@@ -180,3 +180,51 @@ class DNABERTTopDownTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyCl
     ):
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
         return
+
+
+@dataclass
+class SetBERTPretrainingModel(DeepDNAModel[setbert.SetBertPretrainModel]):
+    @classmethod
+    def create(self):
+        pass
+
+    def fit(
+        self,
+    ):
+        pass
+
+
+@dataclass
+class SetBERTBERTaxTaxonomyModel(DeepDNAModel[taxonomy_models.BertaxTaxonomyClassificationModel]):
+    @classmethod
+    def create(self):
+        pass
+
+    def fit(
+        self,
+    ):
+        pass
+
+
+@dataclass
+class SetBERTNaiveTaxonomyModel(DeepDNAModel[taxonomy_models.NaiveTaxonomyClassificationModel]):
+    @classmethod
+    def create(self):
+        pass
+
+    def fit(
+        self,
+    ):
+        pass
+
+
+@dataclass
+class SetBERTTopDownTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyClassificationModel]):
+    @classmethod
+    def create(self):
+        pass
+
+    def fit(
+        self,
+    ):
+        pass
