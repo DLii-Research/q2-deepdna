@@ -94,7 +94,12 @@ FROM build-tensorflow AS build-deep-dna
 # RESCRIPt - we use this for much of our work
 # even if it's not in the Qiime2 amplicon
 # distribution by default, so added here.
-RUN mamba run -n ${QIIME2_ENV} pip install --no-cache-dir git+https://github.com/bokulich-lab/RESCRIPt.git
+RUN mamba install -n ${QIIME2_ENV} -c conda-forge -c bioconda -c qiime2 \
+    -c https://packages.qiime2.org/qiime2/2023.9/shotgun/released/ -c defaults \
+    xmltodict 'q2-types-genomics>2023.2' ncbi-datasets-pylib && \
+    mamba run -n ${QIIME2_ENV} pip install --no-cache-dir git+https://github.com/bokulich-lab/RESCRIPt.git && \
+    fix-permissions "${CONDA_DIR}" && \
+    fix-permissions "/home/${NB_USER}"
 
 # SetBERT Packages
 RUN git clone https://github.com/DLii-Research/deep-dna && \
