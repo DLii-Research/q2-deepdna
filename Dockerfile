@@ -91,6 +91,11 @@ RUN cp /etc/skel/.bash_logout /etc/skel/.bashrc /etc/skel/.profile /home/${NB_US
 
 FROM build-tensorflow AS build-deep-dna
 
+# RESCRIPt - we use this for much of our work
+# even if it's not in the Qiime2 amplicon
+# distribution by default, so added here.
+RUN mamba run -n ${QIIME2_ENV} pip install --no-cache-dir git+https://github.com/bokulich-lab/RESCRIPt.git
+
 # SetBERT Packages
 RUN git clone https://github.com/DLii-Research/deep-dna && \
     cd deep-dna && \
