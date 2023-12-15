@@ -4,7 +4,7 @@ import pickle
 from qiime2.plugin import model
 import tensorflow as tf
 from typing import Tuple
-from .._models import (
+from ..models import (
     DeepDNAModel, DNABERTPretrainingModel, DeepDNAModelManifest,
     DNABERTNaiveTaxonomyModel, DNABERTBERTaxTaxonomyModel, DNABERTTopDownTaxonomyModel,
     SetBERTPretrainingModel, SetBERTNaiveTaxonomyModel, SetBERTBERTaxTaxonomyModel,
@@ -72,7 +72,8 @@ def _3(data: taxonomy.TaxonomyDb) -> TaxonomyDBFormat:
     ff.path.mkdir(parents=True, exist_ok=True)
     assert data.fasta_db is not None, "Taxonomy DB must have a corresponding FASTA DB."
     with taxonomy.TaxonomyDbFactory(ff.path, data.fasta_db, depth=data.tree.depth) as factory:
-        factory.write_entries(iter(data))
+        factory.uuid = data.uuid
+        factory.write_entries(iter(data)) # type: ignore
     return ff
 
 @plugin.register_transformer
@@ -89,7 +90,11 @@ def _5(data: dict) -> PickleFormat:
 @plugin.register_transformer
 def _6(ff: PickleFormat) -> dict:
     with ff.open() as f:
-        return pickle.load(f)
+        try:
+            return pickle.load(f)
+        except:
+            print("Warning: Failed to read Manifest.")
+            return {}
 
 # Model Transformers -------------------------------------------------------------------------------
 
@@ -102,7 +107,7 @@ def _save_model(data: DeepDNAModel) -> DeepDNASavedModelFormat:
     return ff
 
 def _load_model(ff: DeepDNASavedModelFormat) -> Tuple[tf.keras.Model, DeepDNAModelManifest]:
-    return load_model(ff.path), DeepDNAModelManifest(**(ff.manifest.view(dict) or {})) # type: ignore
+    return load_model(ff.path / "model"), DeepDNAModelManifest(**(ff.manifest.view(dict) or {})) # type: ignore
 
 # DNABERT Pre-training Model
 

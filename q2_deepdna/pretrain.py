@@ -2,7 +2,7 @@ from qiime2.plugin import Bool, Choices, Int, Float, Range, Str
 from q2_types.feature_data import FeatureData
 from typing import Optional
 from .types import DeepDNAModel, DNABERTPretrainingModel as DNABERTPretrainingModelType, SequenceDB
-from ._models import DNABERTPretrainingModel
+from .models import DNABERTPretrainingModel
 from ._registry import Field, register_method
 
 from dnadb import fasta

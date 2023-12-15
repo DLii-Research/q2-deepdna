@@ -9,14 +9,14 @@ setup(
     author="David Ludwig",
     author_email="davidludwigii@gmail.com",
     description="deepdna plugin for QIIME 2",
-    license='',
-    url="",
+    license="MIT",
+    url="https://github.com/DLii-Research/q2-deepdna",
     entry_points={
-        'qiime2.plugins':
-        ['q2-deepdna=q2_deepdna.plugin_setup:plugin']
+        "qiime2.plugins":
+        ["q2-deepdna=q2_deepdna.plugin_setup:plugin"]
     },
     package_data={
-        'q2_deepdna': ['citations.bib'],
+        "q2_deepdna": ["citations.bib"],
         # 'q2_deepdna.tests': ['data/*'],
     },
     zip_safe=False,
