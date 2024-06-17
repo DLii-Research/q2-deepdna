@@ -1,14 +1,14 @@
 from dnadb import fasta, taxonomy
 from deepdna.nn.models import load_model
-import pickle
+import json
+import pandas as pd
 from qiime2.plugin import model
 import tensorflow as tf
 from typing import Tuple
 from ..models import (
     DeepDNAModel, DNABERTPretrainingModel, DeepDNAModelManifest,
     DNABERTNaiveTaxonomyModel, DNABERTBERTaxTaxonomyModel, DNABERTTopDownTaxonomyModel,
-    SetBERTPretrainingModel, SetBERTNaiveTaxonomyModel, SetBERTBERTaxTaxonomyModel,
-    SetBERTTopDownTaxonomyModel
+    SetBERTClassificationModel,SetBERTPretrainingModel, SetBERTTaxonomyModel
 )
 from .._registry import register_format
 from ..plugin_setup import plugin, citations
@@ -21,10 +21,16 @@ class _GenericBinaryFormat(model.BinaryFileFormat):
 
 
 @register_format
-class PickleFormat(model.BinaryFileFormat):
+class JSONFormat(model.TextFileFormat):
     def _validate_(self, level):
         pass
 
+@register_format
+class CSVFormat(model.TextFileFormat):
+    def _validate_(self, level):
+        pass
+
+CSVDirectoryFormat = model.SingleFileDirectoryFormat("CSVDirectoryFormat", "data.csv", CSVFormat)
 
 @register_format
 class LMDBFormat(model.DirectoryFormat):
@@ -44,7 +50,7 @@ class TaxonomyDBFormat(LMDBFormat):
 
 @register_format
 class DeepDNASavedModelFormat(model.DirectoryFormat):
-    manifest: model.File = model.File("manifest.pkl", format=PickleFormat)
+    manifest: model.File = model.File("manifest.json", format=JSONFormat)
     keras_metadata_pure_tf = model.File("model/keras_metadata.pb", format=_GenericBinaryFormat)
     saved_model_pure_tf = model.File("model/saved_model.pb", format=_GenericBinaryFormat)
     variables_index = model.File("model/variables/variables.index", format=_GenericBinaryFormat)
@@ -81,20 +87,30 @@ def _4(ff: TaxonomyDBFormat) -> taxonomy.TaxonomyDb:
     return taxonomy.TaxonomyDb(ff.path)
 
 @plugin.register_transformer
-def _5(data: dict) -> PickleFormat:
-    ff = PickleFormat()
+def _5(data: dict) -> JSONFormat:
+    ff = JSONFormat()
     with ff.open() as f:
-        pickle.dump(data, f)
+        json.dump(data, f)
     return ff
 
 @plugin.register_transformer
-def _6(ff: PickleFormat) -> dict:
+def _6(ff: JSONFormat) -> dict:
     with ff.open() as f:
         try:
-            return pickle.load(f)
+            return json.load(f)
         except:
             print("Warning: Failed to read Manifest.")
             return {}
+
+@plugin.register_transformer
+def _21(data: pd.DataFrame) -> CSVFormat:
+    ff = CSVFormat()
+    data.to_csv(str(ff))
+    return ff
+
+@plugin.register_transformer
+def _22(ff: CSVFormat) -> pd.DataFrame:
+    return pd.read_csv(str(ff), index_col=0)
 
 # Model Transformers -------------------------------------------------------------------------------
 
@@ -107,7 +123,9 @@ def _save_model(data: DeepDNAModel) -> DeepDNASavedModelFormat:
     return ff
 
 def _load_model(ff: DeepDNASavedModelFormat) -> Tuple[tf.keras.Model, DeepDNAModelManifest]:
-    return load_model(ff.path / "model"), DeepDNAModelManifest(**(ff.manifest.view(dict) or {})) # type: ignore
+    model, manifest = load_model(ff.path / "model"), DeepDNAModelManifest(**(ff.manifest.view(dict) or {})) # type: ignore
+    print("Loaded model:", model)
+    return model, manifest
 
 # DNABERT Pre-training Model
 
@@ -154,3 +172,23 @@ def _15(data: SetBERTPretrainingModel) -> DeepDNASavedModelFormat:
 @plugin.register_transformer
 def _16(ff: DeepDNASavedModelFormat) -> SetBERTPretrainingModel:
     return SetBERTPretrainingModel(*_load_model(ff))
+
+# SetBERT Taxonomy Model
+
+@plugin.register_transformer
+def _17(data: SetBERTTaxonomyModel) -> DeepDNASavedModelFormat:
+    return _save_model(data)
+
+@plugin.register_transformer
+def _18(ff: DeepDNASavedModelFormat) -> SetBERTTaxonomyModel:
+    return SetBERTTaxonomyModel(*_load_model(ff))
+
+# SetBERT Generic Classification Model
+
+@plugin.register_transformer
+def _19(data: SetBERTClassificationModel) -> DeepDNASavedModelFormat:
+    return _save_model(data)
+
+@plugin.register_transformer
+def _20(ff: DeepDNASavedModelFormat) -> SetBERTClassificationModel:
+    return SetBERTClassificationModel(*_load_model(ff))

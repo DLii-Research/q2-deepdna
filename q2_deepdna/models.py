@@ -6,6 +6,7 @@ from deepdna.nn.callbacks import SafelyStopTrainingCallback
 from deepdna.nn.models import dnabert, setbert, taxonomy as taxonomy_models
 from dnadb import fasta, taxonomy
 import tensorflow as tf
+from typing import Iterable
 import wandb
 
 ModelType = TypeVar("ModelType", bound="tf.keras.Model")
@@ -13,19 +14,19 @@ ModelType = TypeVar("ModelType", bound="tf.keras.Model")
 @dataclass
 class DeepDNAModelManifest:
     config: Dict[Any, Any] = field(default=dict) # type: ignore
-    wandb_run_id: str = ""
+    wandb_run: str = ""
 
     @classmethod
     def from_dict(cls, data: dict) -> "DeepDNAModelManifest":
         return cls(
             config=data["config"],
-            wandb_run_id=data["wandb_run_id"],
+            wandb_run=data["wandb_run"],
         )
 
     def to_dict(self) -> dict:
         return {
             "config": self.config,
-            "wandb_run_id": self.wandb_run_id,
+            "wandb_run": self.wandb_run,
         }
 
 @dataclass
@@ -161,7 +162,6 @@ class DNABERTNaiveTaxonomyModel(DeepDNAModel[taxonomy_models.NaiveTaxonomyClassi
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))
         return
 
-
 @dataclass
 class DNABERTTopDownTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyClassificationModel]):
     @classmethod
@@ -183,7 +183,7 @@ class DNABERTTopDownTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyCl
 
 
 @dataclass
-class SetBERTPretrainingModel(DeepDNAModel[setbert.SetBertPretrainModel]):
+class SetBERTPretrainingModel(DeepDNAModel[setbert.SetBertPretrainWithTaxaAbundanceDistributionModel]):
     @classmethod
     def create(self):
         pass
@@ -195,9 +195,9 @@ class SetBERTPretrainingModel(DeepDNAModel[setbert.SetBertPretrainModel]):
 
 
 @dataclass
-class SetBERTBERTaxTaxonomyModel(DeepDNAModel[taxonomy_models.BertaxTaxonomyClassificationModel]):
+class SetBERTTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyClassificationModel]):
     @classmethod
-    def create(self):
+    def create(cls):
         pass
 
     def fit(
@@ -207,24 +207,19 @@ class SetBERTBERTaxTaxonomyModel(DeepDNAModel[taxonomy_models.BertaxTaxonomyClas
 
 
 @dataclass
-class SetBERTNaiveTaxonomyModel(DeepDNAModel[taxonomy_models.NaiveTaxonomyClassificationModel]):
+# class SetBERTClassificationModel(DeepDNAModel[setbert.SetBertClassificationModel]):
+class SetBERTClassificationModel(DeepDNAModel):
     @classmethod
-    def create(self):
-        pass
+    def create(
+        cls,
+        setbert_pretraining_model: SetBERTPretrainingModel,
+        labels: Iterable[str]
+    ):
+        base = setbert_pretraining_model.model.base
+        classifier = setbert.SetBertClassificationModel(base, labels, False)
+        return cls(classifier, DeepDNAModelManifest({}))
 
     def fit(
         self,
     ):
-        pass
-
-
-@dataclass
-class SetBERTTopDownTaxonomyModel(DeepDNAModel[taxonomy_models.TopDownTaxonomyClassificationModel]):
-    @classmethod
-    def create(self):
-        pass
-
-    def fit(
-        self,
-    ):
-        pass
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4))

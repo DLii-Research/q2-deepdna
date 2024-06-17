@@ -2,7 +2,9 @@ from ._format import (
     DNAFASTADBFormat,
     TaxonomyDBFormat,
     DeepDNASavedModelFormat,
-    PickleFormat
+    JSONFormat,
+    CSVFormat,
+    CSVDirectoryFormat,
 )
 from ._type import (
     DeepDNAModel,
@@ -11,9 +13,9 @@ from ._type import (
     DNABERTBERTaxTaxonomyModel,
     DNABERTTopDownTaxonomyModel,
     SetBERTPretrainingModel,
-    SetBERTBERTaxTaxonomyModel,
-    SetBERTNaiveTaxonomyModel,
-    SetBERTTopDownTaxonomyModel,
+    SetBERTTaxonomyModel,
+    SetBERTClassificationModel,
+    # SampleClassPrediction,
     SequenceDB,
     TaxonomyDB,
 )
@@ -23,7 +25,9 @@ __all__ = [
     "DNAFASTADBFormat",
     "TaxonomyDBFormat",
     "DeepDNASavedModelFormat",
-    "PickleFormat",
+    "JSONFormat",
+    "CSVFormat",
+    "CSVDirectoryFormat",
 
     # Semantic types
     "DeepDNAModel",
@@ -32,10 +36,10 @@ __all__ = [
     "DNABERTNaiveTaxonomyModel",
     "DNABERTTopDownTaxonomyModel",
     "SetBERTPretrainingModel",
-    "SetBERTBERTaxTaxonomyModel",
-    "SetBERTNaiveTaxonomyModel",
-    "SetBERTTopDownTaxonomyModel",
+    "SetBERTTaxonomyModel",
+    "SetBERTClassificationModel",
 
+    # "SampleClassPrediction",
     "SequenceDB",
     "TaxonomyDB"
 ]
